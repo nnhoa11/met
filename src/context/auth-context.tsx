@@ -1,14 +1,14 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 type User = {
-    fullname: string,
+    fullName: string,
     username: string,
     role: string,
     id: string
 }
 type AuthContextValue = {
     isLoggedIn: boolean;
-    user: User | null;
+    user: User | undefined;
     login: (user: User) => void;
     logout: () => void;
 };
@@ -20,8 +20,8 @@ const USER_STORAGE_KEY = "auth_user";
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [token, setToken] = useState<string | null>(null);
-    const [user, setUser] = useState<User | null>(null);
-
+    const [user, setUser] = useState<User>();
+    const [isLoggedIn, setLoggedIn] = useState<boolean>(false);
     useEffect(() => {
         try {
             const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -30,7 +30,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setToken(storedToken);
             }
             if (storedUser) {
-                setUser(JSON.parse(storedUser));
+                const tmp = JSON.parse(storedUser) as User;
+                setUser(prev => prev = tmp);
+                setLoggedIn(true)
             }
         } catch {
             // ignore corrupted storage
@@ -38,12 +40,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, []);
 
     const login = (user: User) => {
-        localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(user));
+        setUser(user);
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
     };
 
     const logout = () => {
         setToken(null);
-        setUser(null);
+        setUser(undefined);
+        setLoggedIn(false)
         try {
             localStorage.removeItem(TOKEN_STORAGE_KEY);
             localStorage.removeItem(USER_STORAGE_KEY);
@@ -53,12 +57,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     const value = useMemo<AuthContextValue>(() => ({
-        isLoggedIn: Boolean(token),
+        isLoggedIn,
         token,
         user,
         login,
         logout,
     }), [token, user]);
+
+    useEffect(() => {
+        console.log(user)
+        // setLoggedIn(prev => prev = (user ? true : false))
+        console.log(isLoggedIn)
+    }, [user])
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
